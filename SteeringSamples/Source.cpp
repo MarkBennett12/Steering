@@ -19,9 +19,9 @@ struct agent
 	float orientation; // current facing angle of the ai agent
 	float angularVelocity; // maximum turning speed (radians per second)
 	float maxVelocity; // maximum travel speed (meters per second)
+	float arrivalDistance; // The distance at which we start to slow down
 
 	// constructors and methods follow...
-
 	agent()
 	{
 		position.x = 0.0f;
@@ -31,6 +31,7 @@ struct agent
 		orientation = 0.0f;
 		angularVelocity = 0.0f;
 		maxVelocity = 0.0f;
+		arrivalDistance = 0.0f;
 	}
 
 	agent(float initPosX, float initPosY, float initMaxVelocity)
@@ -42,6 +43,7 @@ struct agent
 		orientation = 0.0f;
 		angularVelocity = 4.0f;
 		maxVelocity = initMaxVelocity;
+		arrivalDistance = 3.0f;
 	}
 
 	void display()
@@ -54,9 +56,17 @@ struct agent
 		cout << "agent velocity x = " << velocity.x << endl;
 		cout << "agent velocity y = " << velocity.y << endl;
 
-		cout << "agent orientation x = " << orientation * 180 / 3.14 << endl;
+		cout << "agent orientation degrees = " << orientation * 180 / 3.14 << endl;
 
 		cout << endl;
+	}
+
+	/***********************************************************************************
+	Avoids obstacles
+	***********************************************************************************/
+	void obstacleAvoidance(vector2 obstaclePosition, float obstacleSize)
+	{
+
 	}
 
 	/***********************************************************************************
@@ -68,11 +78,11 @@ struct agent
 	***********************************************************************************/
 	void orientate(vector2 direction, float deltaTime)
 	{
-		// turn to face the steering direction, but only if we're moving
-		if (magnitude(velocity) > 0)
+		// Make sure there's a direction to turn to, and don't break atan2
+		if (magnitude(direction) > 0)
 		{
 			// Calculate the change in angle to face the right way
-			float deltaAngle = atan2(-direction.x, direction.y) - orientation;
+			float deltaAngle = atan2(direction.y, direction.x) - orientation;
 
 			// progressively turn toward that direction
 			orientation += deltaAngle * angularVelocity * deltaTime;
@@ -88,17 +98,22 @@ struct agent
 	***********************************************************************************/
 	void steer(vector2 direction, float deltaTime)
 	{
-		// the direction and speed to the destination
-		velocity = normalise(direction);
+		// distance to target
+		float distance = magnitude(direction);
 
 		// turn towards our target
-		orientate(velocity, deltaTime);
+		orientate(direction, deltaTime);
 
-		// go at full speed
-		velocity *= maxVelocity;
+		// Steer in the direction we're facing
+		velocity.x = cos(orientation) * maxVelocity * deltaTime;
+		velocity.y = sin(orientation) * maxVelocity * deltaTime;
 
+		// Slow down as we get within arrival distance
+		if(distance < arrivalDistance)
+			velocity *= (distance / arrivalDistance);
+		
 		// now move
-		position += velocity * deltaTime;
+		position += velocity;
 	}
 
 	/*
